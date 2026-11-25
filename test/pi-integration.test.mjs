@@ -24,9 +24,12 @@ let pi = null;
 let skipReason = null;
 let cliPath = null;
 
-const ENTRY = join(import.meta.dirname, "..", "extensions", "workspace.js");
-const PROBE = join(import.meta.dirname, "fixtures", "probe-extension.js");
-const VETO = join(import.meta.dirname, "fixtures", "veto-extension.js");
+const HERE = import.meta.dirname;
+const ENTRY = join(HERE, "..", "extensions", "workspace.js");
+const PROBE = join(HERE, "fixtures", "probe-extension.js");
+const VETO = join(HERE, "fixtures", "veto-extension.js");
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 before(async () => {
   const pkg = piPackageDir();
@@ -97,6 +100,10 @@ async function scenario({ veto = false } = {}) {
     },
   });
 
+  const mark = () => rpc.events.length;
+  const waitAfter = (from, predicate, label, timeoutMs = 30000) =>
+    rpc.waitFor((list) => predicate(list.slice(from)), { timeoutMs, label });
+
   let stateCounter = 0;
   const state = async () => {
     stateCounter += 1;
@@ -114,15 +121,32 @@ async function scenario({ veto = false } = {}) {
     return response.data;
   };
 
-  /** Run one `/workspace` step: the extension asks for a path over RPC. */
+  /** One `/workspace` step: the extension asks for a folder over RPC. */
   const workspace = async (id, answer) => {
+    const from = mark();
     await prompt("/workspace", id);
-    const request = await rpc.waitUiRequest("input", { timeoutMs: 30000 });
+    const request = await waitAfter(
+      from,
+      (list) => list.find((event) => event.type === "extension_ui_request" && event.method === "input"),
+      `input request for ${id}`,
+    );
     rpc.respond(request.id, "value" in answer ? { value: answer.value } : { cancelled: true });
-    return request;
+    return from;
   };
 
-  return { root, agentDir, projectA, projectB, fixtureFile, fixtureId, probeOut, rpc, state, prompt, workspace };
+  const waitNotify = (from, text, timeoutMs = 30000) =>
+    waitAfter(
+      from,
+      (list) =>
+        list.find(
+          (event) =>
+            event.type === "extension_ui_request" && event.method === "notify" && String(event.message).includes(text),
+        ),
+      `notify containing ${JSON.stringify(text)}`,
+      timeoutMs,
+    );
+
+  return { root, agentDir, projectA, projectB, fixtureFile, fixtureId, probeOut, rpc, mark, state, prompt, workspace, waitNotify };
 }
 
 describe("real Pi 1.6 session replacement", () => {
@@ -143,30 +167,29 @@ describe("real Pi 1.6 session replacement", () => {
       assert.equal(workspaceCommands[0].description, WORKSPACE_COMMAND_DESCRIPTION);
 
       // Cancel: nothing happens.
-      await world.workspace("cancel", { cancelled: true });
-      await rpc.waitNotify("Canceled", { timeoutMs: 30000 });
+      let from = await world.workspace("cancel", { cancelled: true });
+      await world.waitNotify(from, "Canceled");
       assert.equal((await world.state()).sessionId, world.fixtureId);
 
       // Same folder, different case and a trailing separator: a no-op.
-      await world.workspace("same", { value: `${world.projectA.toUpperCase()}\\` });
-      await rpc.waitNotify("Already in", { timeoutMs: 30000 });
+      from = await world.workspace("same", { value: `${world.projectA.toUpperCase()}\\` });
+      await world.waitNotify(from, "Already in");
       assert.equal((await world.state()).sessionId, world.fixtureId);
 
       // A path that is not a folder is a short error, not a dialog or a switch.
-      await world.workspace("invalid", { value: join(world.root, "missing folder") });
-      await rpc.waitNotify("Folder not found:", { timeoutMs: 30000 });
+      from = await world.workspace("invalid", { value: join(world.root, "missing folder") });
+      await world.waitNotify(from, "Folder not found:");
       assert.equal((await world.state()).sessionId, world.fixtureId);
 
       // Pi itself writes its setup entries (model/thinking) into an opened
       // session; once that has settled, the switch must not touch the file.
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await sleep(500);
       const fixtureHash = sha256(world.fixtureFile);
       const fixtureBefore = readSessionJsonl(world.fixtureFile);
-      assert.equal(sha256(world.fixtureFile), fixtureHash);
 
       // The real switch.
-      await world.workspace("switch", { value: world.projectB });
-      await rpc.waitNotify("Workspace: ", { timeoutMs: 60000 });
+      from = await world.workspace("switch", { value: world.projectB });
+      await world.waitNotify(from, "Workspace: ", 60000);
       const switched = await rpc.waitUntil(
         async () => {
           const state = await world.state();
@@ -178,7 +201,11 @@ describe("real Pi 1.6 session replacement", () => {
       assert.equal(switched.messageCount, 0, "the target session starts blank");
 
       const realB = realpathSync.native(world.projectB);
-      assert.equal(switched.sessionFile.toLowerCase().startsWith(encodedSessionsDir(world.agentDir, realB).toLowerCase()), true, switched.sessionFile);
+      assert.equal(
+        switched.sessionFile.toLowerCase().startsWith(encodedSessionsDir(world.agentDir, realB).toLowerCase()),
+        true,
+        switched.sessionFile,
+      );
       const header = readSessionJsonl(switched.sessionFile)[0];
       assert.equal(header.type, "session");
       assert.equal(header.cwd, realB, "the new session header names the target workspace");
@@ -195,7 +222,7 @@ describe("real Pi 1.6 session replacement", () => {
       // Pi rebuilt the runtime: cwd, context files, and a real built-in tool
       // reading a relative path all point at the target.
       await world.prompt("/probe", "probe");
-      await rpc.waitFor(() => existsSync(world.probeOut), { timeoutMs: 60000, label: "probe output" });
+      await rpc.waitUntil(() => existsSync(world.probeOut), { timeoutMs: 60000, label: "probe output" });
       const probe = JSON.parse(readText(world.probeOut));
       assert.equal(probe.cwd, realB);
       assert.equal(probe.promptCwd, realB);
@@ -206,7 +233,9 @@ describe("real Pi 1.6 session replacement", () => {
         JSON.stringify(probe.contextFiles),
       );
       assert.equal(
-        probe.contextFiles.some((file) => file.toLowerCase() === join(realpathSync.native(world.projectA), "AGENTS.md").toLowerCase()),
+        probe.contextFiles.some(
+          (file) => file.toLowerCase() === join(realpathSync.native(world.projectA), "AGENTS.md").toLowerCase(),
+        ),
         false,
         "the previous project context must not linger",
       );
@@ -228,11 +257,11 @@ describe("real Pi 1.6 session replacement", () => {
     try {
       const initial = await world.state();
       assert.equal(initial.sessionId, world.fixtureId);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await sleep(500);
       const fixtureHash = sha256(world.fixtureFile);
 
-      await world.workspace("veto", { value: world.projectB });
-      await rpc.waitNotify("Workspace switch canceled.", { timeoutMs: 60000 });
+      const from = await world.workspace("veto", { value: world.projectB });
+      await world.waitNotify(from, "Workspace switch canceled.", 60000);
       const after = await world.state();
       assert.equal(after.sessionId, world.fixtureId, "the source session stays active");
       assert.equal(sha256(world.fixtureFile), fixtureHash);

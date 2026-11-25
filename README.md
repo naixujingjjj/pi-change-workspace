@@ -169,6 +169,7 @@ npm run lint:syntax
 npm test                     :: unit tests + the real-Pi integration test
 npm run test:unit
 npm run test:integration     :: spawns the installed pi CLI in RPC mode
+npm run test:acceptance      :: the same real-Pi checks, driven from PowerShell
 ```
 
 `npm test` runs all files in one Node process (`--test-isolation=none`), so it
@@ -224,11 +225,22 @@ Known limits of the automated coverage:
   scripted stand-in for `spawn`, and the real spawn path is covered only when the
   test process may start children.
 - `test/pi-integration.test.mjs` skips itself when child processes are not
-  allowed (for example inside a restricted sandbox); run
-  `npm run test:integration` in a normal terminal.
+  allowed (for example inside a restricted sandbox). `tools/acceptance-rpc.ps1`
+  (`npm run test:acceptance`) drives the same real-Pi flow from PowerShell, which
+  is what was run to verify this package where the Node test process could not
+  spawn `pi`; it checks cancel, same-folder no-op, a missing folder, the real
+  switch (new session id, blank conversation, header cwd, target-project
+  storage, old session byte-identical), the rebuilt runtime (`ctx.cwd`, prompt
+  cwd, target `AGENTS.md`, no previous context, built-in `read` resolving
+  `AGENTS.md` relatively), and a vetoed switch (session unchanged, no stray
+  session file). Exit code 0 means every check passed.
 - `test/entry.test.mjs` skips when Windows refuses to create the directory link
   that lets a plain Node test resolve `@earendil-works/pi-coding-agent`
   (Developer Mode or an elevated shell normally allows it).
+- The interactive pieces that cannot be automated here — the WinForms dialog
+  window being shown, and the `/` menu actually painting the path on the right —
+  are covered by the manual steps below; the autocomplete row is verified
+  against the real `@earendil-works/pi-tui` provider output.
 
 ### Manual acceptance (interactive)
 
@@ -258,6 +270,7 @@ src/session-target.js     fresh header-only session and ownership-checked cleanu
 src/autocomplete.js       the `/workspace` row override (path only)
 test/…                    unit, provider and real-Pi integration tests
 tools/check-syntax.mjs    `node --check` over every ship/test file
+tools/acceptance-rpc.ps1 real-Pi acceptance run driven from PowerShell
 ```
 
 ## License

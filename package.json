@@ -36,9 +36,10 @@
     }
   },
   "scripts": {
-    "test": "node --test --test-isolation=none test/*.test.mjs",
-    "test:unit": "node --test --test-isolation=none test/target-path.test.mjs test/picker.test.mjs test/session-target.test.mjs test/command.test.mjs test/register.test.mjs test/autocomplete.test.mjs test/entry.test.mjs",
-    "test:integration": "node --test --test-isolation=none test/pi-integration.test.mjs",
+    "test": "npm run test:unit && node test/pi-integration.test.mjs",
+    "test:unit": "node test/target-path.test.mjs && node test/picker.test.mjs && node test/session-target.test.mjs && node test/command.test.mjs && node test/register.test.mjs && node test/autocomplete.test.mjs && node test/entry.test.mjs",
+    "test:integration": "node test/pi-integration.test.mjs",
+    "test:acceptance": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/acceptance-rpc.ps1",
     "lint:syntax": "node tools/check-syntax.mjs",
     "prepublishOnly": "npm run lint:syntax && npm run test:unit"
   }
