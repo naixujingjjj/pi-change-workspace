@@ -9,9 +9,9 @@ copied.
 pi (started in the wrong directory)
   /            → pick /workspace
                → native folder dialog opens at the current session cwd
-               → choose F:\real-project
+               → choose D:\projects\app
   Pi replaces its session in place: cwd, AGENTS.md/project context, skills and
-  built-in tool paths now belong to F:\real-project, in a new empty conversation.
+  built-in tool paths now belong to D:\projects\app, in a new empty conversation.
   The old conversation is still on disk and still resumable with /resume.
 ```
 
@@ -19,29 +19,61 @@ Scope is deliberately small: native Windows interactive CLI only. There is no
 T3/GUI integration, no remote or WSL picker, no session-recall feature, and no
 second command or argument mode.
 
-## Install (local, no global install)
+## Install
 
-Pi packages can be loaded from a local path for one run:
+Nothing has to be copied into Pi or vendored anywhere: Pi loads the package
+straight from its source. Either the GitHub source (no clone on your disk) or a
+local clone when you are developing it.
 
-```bat
-pi -e F:\dsh\pi-change-workspace
-```
+### From GitHub
 
-or for one extension file:
-
-```bat
-pi -e F:\dsh\pi-change-workspace\extensions\workspace.js
-```
-
-If you want it in every session, register the local package yourself with Pi's
-own installer (this package never writes Pi's settings):
+Try it for one run:
 
 ```bat
-pi install F:\dsh\pi-change-workspace
+pi -e git:github.com/naixujingjjj/pi-change-workspace
 ```
 
-`pi list` / `pi remove` manage it afterwards. Relative local paths in settings
-resolve from the settings file, so prefer an absolute path.
+Install it once to get `/workspace` in every session:
+
+```bat
+pi install git:github.com/naixujingjjj/pi-change-workspace
+```
+
+Both are the same source; Pi clones it into its own directory, so neither Pi's
+installation nor this README depends on a folder of yours. A plain URL is
+accepted as a git source too:
+
+```bat
+pi install https://github.com/naixujingjjj/pi-change-workspace
+```
+
+Pin a tag, branch or commit when you want a fixed version:
+
+```bat
+pi install git:github.com/naixujingjjj/pi-change-workspace@v0.1.0
+```
+
+Afterwards `pi list` shows it, `pi remove <source>` removes it, and
+`pi update --extensions` reconciles it. A git source that is not pinned to a tag
+or commit is re-fetched on start and `/reload`; `-e` runs are cached under
+`~/.pi/agent/tmp/extensions/`. Declarations are written by `pi install` into
+Pi's own settings — this package never writes settings, models, auth or trust
+state.
+
+### From a local clone (development)
+
+```bat
+git clone https://github.com/naixujingjjj/pi-change-workspace.git
+cd pi-change-workspace
+pi -e .                          :: load the package for this run only
+pi -e extensions\workspace.js    :: or just the single extension file
+pi install .                     :: or register it for every session
+```
+
+A local package is loaded from its resolved path without copying, so your edits
+apply after `/reload`. If you register a local path from `settings.json`, prefer
+an absolute one: relative local paths resolve from the settings file that
+contains them, not from the directory you happen to run Pi in.
 
 Requirements:
 
@@ -56,7 +88,7 @@ Requirements:
 ## Use
 
 Type `/` and choose `/workspace`. The slash row's description is the current
-workspace's native absolute path (`F:\dsh`), and it refreshes after a
+workspace's native absolute path (`D:\projects\app`), and it refreshes after a
 successful switch.
 
 What each outcome does:
@@ -164,7 +196,7 @@ never writes trust state, settings, models or auth.
 ## Verify it yourself
 
 ```bat
-cd F:\dsh\pi-change-workspace
+cd pi-change-workspace          :: the clone you are working in
 npm run lint:syntax
 npm test                     :: unit tests + the real-Pi integration test
 npm run test:unit
@@ -245,7 +277,8 @@ Known limits of the automated coverage:
 
 ### Manual acceptance (interactive)
 
-1. Open CMD in some other folder and start Pi: `pi -e F:\dsh\pi-change-workspace`.
+1. Open CMD in some other folder and start Pi with
+   `pi -e git:github.com/naixujingjjj/pi-change-workspace`.
 2. Type `/`, confirm the `/workspace` row shows that folder's absolute path and
    nothing else.
 3. Send `/workspace`. The dialog opens in the current folder.
