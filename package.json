@@ -1,0 +1,45 @@
+{
+  "name": "pi-change-workspace",
+  "version": "0.1.0",
+  "description": "Switch the workspace of a running native Windows Pi CLI session: choose a folder with Windows' own dialog and continue in a fresh blank session for that folder, in the same Pi process and TUI.",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "workspace",
+    "cwd",
+    "windows"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "os": [
+    "win32"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/workspace.js"
+    ]
+  },
+  "files": [
+    "extensions/",
+    "src/",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "test": "node --test --test-isolation=none test/*.test.mjs",
+    "test:unit": "node --test --test-isolation=none test/target-path.test.mjs test/picker.test.mjs test/session-target.test.mjs test/command.test.mjs test/register.test.mjs test/autocomplete.test.mjs test/entry.test.mjs",
+    "test:integration": "node --test --test-isolation=none test/pi-integration.test.mjs",
+    "lint:syntax": "node tools/check-syntax.mjs",
+    "prepublishOnly": "npm run lint:syntax && npm run test:unit"
+  }
+}
