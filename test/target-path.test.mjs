@@ -93,6 +93,17 @@ describe("canonicalizeDirectory", () => {
     assert.equal(result.path, quoted);
   });
 
+  it("keeps a literal selection with trailing Unicode whitespace distinct", () => {
+    const root = dir("literal-space");
+    const plain = join(root, "target");
+    const spaced = `${plain}\u00a0`;
+    mkdirSync(plain);
+    mkdirSync(spaced);
+
+    assert.equal(canonicalizeDirectory(spaced, { cwd: root, literal: true }).path, spaced);
+    assert.equal(samePath(plain, spaced), false);
+  });
+
   it("accepts a trailing separator and duplicate separators", () => {
     const root = dir("trailing");
     const target = join(root, "folder");

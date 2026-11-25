@@ -93,7 +93,7 @@ describe("picker input is data, never code", () => {
 
   it("accepts only absolute printable paths", () => {
     assert.equal(isUsablePickedPath("F:\\dsh"), true);
-    assert.equal(isUsablePickedPath("  F:\\dsh  "), true);
+    assert.equal(isUsablePickedPath("  F:\\dsh  "), false);
     assert.equal(isUsablePickedPath("relative\\dir"), false);
     assert.equal(isUsablePickedPath(""), false);
     assert.equal(isUsablePickedPath("F:\\a\u0000b"), false);
@@ -111,7 +111,7 @@ describe("interpretPickerRun", () => {
   });
 
   it("maps a picked path, including Unicode, to success", () => {
-    const path = "F:\\work\\测试 目录 & 'x'";
+    const path = "F:\\work\\测试 目录 & 'x'\u00a0";
     const verdict = interpretPickerRun({ payload: { cancelled: false, path }, exitCode: 0 });
     assert.equal(verdict.ok, true);
     assert.equal(verdict.path, path);

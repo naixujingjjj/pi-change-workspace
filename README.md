@@ -104,9 +104,9 @@ they belong to.
 
 ## How it works (and why)
 
-1. **Pick.** The dialog returns one path; it is trimmed, one pair of surrounding
-   quotes is dropped, `~` is expanded, and it is made absolute against the
-   session cwd.
+1. **Pick.** The dialog returns an absolute path as-is. For typed input, Pi
+   trims surrounding whitespace and one pair of quotes, expands `~`, and
+   resolves relative paths against the session cwd.
 2. **Verify.** `fs.realpathSync.native` + a directory check give the canonical
    Windows spelling (long path, junctions and case resolved). An invalid target
    never reaches the session machinery.
@@ -172,9 +172,10 @@ npm run test:integration     :: spawns the installed pi CLI in RPC mode
 npm run test:acceptance      :: the same real-Pi checks, driven from PowerShell
 ```
 
-`npm test` runs all files in one Node process (`--test-isolation=none`), so it
-also works where the test runner may not spawn a child per file. Test fixtures
-live under `.tmp/` (git-ignored) and are removed afterwards.
+`npm test` runs each test file separately so its Pi configuration stays
+isolated. Test fixtures live under `.tmp/` (git-ignored). Unit and Node
+integration tests remove their fixtures. The PowerShell acceptance script
+keeps each run's fixtures in a separate directory there for inspection.
 
 What the automated tests cover:
 

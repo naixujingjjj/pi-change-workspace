@@ -84,9 +84,10 @@ function failure(error, shown) {
  * session is stored from exactly this value, so it must be a directory that
  * exists now and is spelled the way Windows itself spells it.
  */
-export function canonicalizeDirectory(input, { cwd = process.cwd(), platform = process.platform } = {}) {
-  const raw = stripOuterQuotes(String(input ?? "").trim());
-  if (!raw) {
+export function canonicalizeDirectory(input, { cwd = process.cwd(), platform = process.platform, literal = false } = {}) {
+  const value = String(input ?? "");
+  const raw = literal ? value : stripOuterQuotes(value.trim());
+  if (!raw.trim()) {
     return { ok: false, code: PATH_CODES.EMPTY, message: "Enter a folder path." };
   }
   if (/[\u0000-\u001f]/.test(raw)) {
@@ -116,8 +117,8 @@ export function canonicalizeDirectory(input, { cwd = process.cwd(), platform = p
  * names and junctions; a trailing separator is ignored unless it is the root.
  */
 export function normalizeForCompare(value, { platform = process.platform } = {}) {
-  let text = String(value ?? "").trim();
-  if (!text) return "";
+  let text = String(value ?? "");
+  if (!text.trim()) return "";
   try {
     text = realpathSync.native(text);
   } catch {

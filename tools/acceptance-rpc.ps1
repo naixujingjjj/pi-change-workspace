@@ -5,16 +5,9 @@
 # switched to. It exists because a Node test runner cannot always start child
 # processes (for example inside a restricted sandbox), while PowerShell can.
 #
-# ASCII only: Windows PowerShell 5.1 reads a script without a BOM as the ANSI
-# code page, and every Unicode value here travels through JSON data instead.
-#
-#   powershell -NoProfile -ExecutionPolicy Bypass -File tools\acceptance-rpc.ps1
+#   pwsh -NoProfile -ExecutionPolicy Bypass -File tools\acceptance-rpc.ps1
 #
 # Exit code 0 means every check passed.
-param(
-  [string]$Root = (Join-Path (Split-Path -Parent $PSScriptRoot) '.tmp\acceptance')
-)
-
 $ErrorActionPreference = 'Stop'
 $packageRoot = Split-Path -Parent $PSScriptRoot
 $entry = Join-Path $packageRoot 'extensions\workspace.js'
@@ -47,7 +40,10 @@ if (-not (Test-Path -LiteralPath $piCmd)) {
   exit 2
 }
 
-if (Test-Path -LiteralPath $Root) { Remove-Item -LiteralPath $Root -Recurse -Force }
+$fixtureParent = Join-Path $packageRoot '.tmp'
+New-Item -ItemType Directory -Force -Path $fixtureParent | Out-Null
+$Root = Join-Path $fixtureParent ('acceptance-' + [System.IO.Path]::GetRandomFileName())
+New-Item -ItemType Directory -Path $Root | Out-Null
 $agentDir = Join-Path $Root 'agent'
 $projectA = Join-Path $Root 'project a'
 $projectB = Join-Path $Root "project b 测试 & 'x'"

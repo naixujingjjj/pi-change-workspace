@@ -114,23 +114,27 @@ async function scenario({ veto = false } = {}) {
     return response.data;
   };
 
-  const prompt = async (message, id) => {
-    rpc.send({ id, type: "prompt", message });
+  const waitPrompt = async (id) => {
     const response = await rpc.waitResponse(id, { timeoutMs: 30000 });
     assert.equal(response.success, true, JSON.stringify(response));
     return response.data;
+  };
+  const prompt = (message, id) => {
+    rpc.send({ id, type: "prompt", message });
+    return waitPrompt(id);
   };
 
   /** One `/workspace` step: the extension asks for a folder over RPC. */
   const workspace = async (id, answer) => {
     const from = mark();
-    await prompt("/workspace", id);
+    rpc.send({ id, type: "prompt", message: "/workspace" });
     const request = await waitAfter(
       from,
       (list) => list.find((event) => event.type === "extension_ui_request" && event.method === "input"),
       `input request for ${id}`,
     );
     rpc.respond(request.id, "value" in answer ? { value: answer.value } : { cancelled: true });
+    await waitPrompt(id);
     return from;
   };
 

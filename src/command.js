@@ -71,7 +71,7 @@ async function pickTarget(ctx, deps, currentCwd) {
       initialDir: currentCwd,
       description: "Select the workspace folder for Pi.",
     });
-    if (picked?.ok) return { ok: true, path: picked.path };
+    if (picked?.ok) return { ok: true, path: picked.path, literal: true };
     if (picked?.cancelled) {
       notify(picked.message || "Canceled. Workspace unchanged.", "info");
       return { ok: false, code: RESULT_CODES.CANCELLED };
@@ -175,7 +175,7 @@ export async function runWorkspaceCommand(ctx, { args = "", deps = {} } = {}) {
     const choice = await pickTarget(ctx, api, currentCwd);
     if (!choice.ok) return choice;
 
-    const target = api.canonicalize(choice.path, { cwd: currentCwd });
+    const target = api.canonicalize(choice.path, { cwd: currentCwd, literal: choice.literal });
     if (!target.ok) {
       notify(target.message, "error");
       return { ok: false, code: RESULT_CODES.INVALID, message: target.message };

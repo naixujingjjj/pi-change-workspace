@@ -172,8 +172,7 @@ export function readPickerPayload(path) {
 
 /** A path the dialog could legitimately return: absolute, printable, non-empty. */
 export function isUsablePickedPath(value) {
-  const path = typeof value === "string" ? value.trim() : "";
-  return Boolean(path) && isAbsolute(path) && !/[\u0000-\u001f]/.test(path);
+  return typeof value === "string" && isAbsolute(value) && !/[\u0000-\u001f]/.test(value);
 }
 
 /**
@@ -223,7 +222,7 @@ export function interpretPickerRun({ payload = null, exitCode = null, stderr = "
       next: "return",
     };
   }
-  const path = typeof payload.path === "string" ? payload.path.trim() : "";
+  const path = payload.path;
   if (!isUsablePickedPath(path)) {
     return {
       ...failure(
